@@ -1,0 +1,113 @@
+---
+title:  "SkewC_Create_Coverage_Matrix"
+author: "Imad Abugessaisa: Laboratory for Large-Scale Biomedical Data Technology - RIKEN-IMS"
+date:    "August,25, 2021"
+output: html_document
+---
+
+```{r echo=FALSE}
+knitr::opts_knit$set(verbose = TRUE)
+options(width=100)
+```
+
+## SkewC
+
+This is an R Markdown document to create the required coverage matrixes. The input is the vector of the normalized values from the genebody coverge script (coverage.r)file. In this file, each single-cell has a vector of numerical values. The each cell has a cell id with prefix ERR_
+
+
+```{r load required libraries}
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+```
+## 
+
+```{r Read the input gene body coverage vector file .r}
+## Source the coverage.r file
+source(file = "coverage.r")
+## In put the dataset title. The dataset title will be used
+## to label the output plots
+DatasetTitle <- readline(prompt = "What is the dataset title?")
+```
+
+##
+```{r Creat list var}
+## Initation of the initiation of variables and coverageValues
+## list
+vars <- ls(pattern = "ERR")
+nvars <- length(vars)
+CoverageValues <- list()
+j <- 1
+for (i in 1:nvars)
+{
+if (class(get(vars[i])) == "numeric")
+{
+CoverageValues[[j]] <- get(vars[i])
+names(CoverageValues)[j] <- vars[i]
+j <- j + 1
+}
+}
+```
+##
+```{r Create R data frame of the coverage matrix}
+## The data frame name Coverage_DF
+## Coverage_DF consists of 100 columns [pmean1..pmean100] plus the ## cell ID column "Annotation"
+
+
+Coverage_DF <- as.data.frame(t(as.data.frame(CoverageValues)))
+Coverage_DF$Annotation <- rownames(Coverage_DF)
+rownames(Coverage_DF) <- NULL
+
+## Remove the prefix string from the Coverage_means_DF
+dfv <- as.character('ERR_')
+Coverage_DF$Annotation <- gsub(dfv, "", Coverage_DF$Annotation)
+## Remove the prefix string from the Coverage_means_DF
+
+
+```
+
+```{r }
+## Compute the mean coveage matrix Coverage_means_DF
+## The data frame name Coverage_means_DF
+## Coverage_means_DF consists of 10 columns [pmean10..pmean100] plus the ## cell ID column "Annotation"
+Coverage_means_DF <- Coverage_DF
+p10 <- c(names(Coverage_means_DF)[1:10])
+p20 <- c(names(Coverage_means_DF)[11:20])
+p30 <- c(names(Coverage_means_DF)[21:30])
+p40 <- c(names(Coverage_means_DF)[31:40])
+p50 <- c(names(Coverage_means_DF)[41:50])
+p60 <- c(names(Coverage_means_DF)[51:60])
+p70 <- c(names(Coverage_means_DF)[61:70])
+p80 <- c(names(Coverage_means_DF)[71:80])
+p90 <- c(names(Coverage_means_DF)[81:90])
+p100 <- c(names(Coverage_means_DF)[91:100])
+
+############################
+### {r compute row_mean}
+
+Coverage_means_DF$pmeanAve10 <-
+  rowMeans(Coverage_means_DF[c(p10)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve20 <-
+  rowMeans(Coverage_means_DF[c(p20)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve30 <-
+  rowMeans(Coverage_means_DF[c(p30)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve40 <-
+  rowMeans(Coverage_means_DF[c(p40)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve50 <-
+  rowMeans(Coverage_means_DF[c(p50)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve60 <-
+  rowMeans(Coverage_means_DF[c(p60)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve70 <-
+  rowMeans(Coverage_means_DF[c(p70)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve80 <-
+  rowMeans(Coverage_means_DF[c(p80)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve90 <-
+  rowMeans(Coverage_means_DF[c(p90)],na.rm=TRUE)
+Coverage_means_DF$pmeanAve100 <-
+  rowMeans(Coverage_means_DF[c(p100)],na.rm=TRUE)
+## {r write final output to R data frame}
+Coverage_means_DF <- Coverage_means_DF[,-c(1:100)]
+## Save Coverage_means_DF as Coverage_means_DF_Clust for Trim ## clustering use
+Coverage_means_DF_Clust <- Coverage_means_DF
+```
+
