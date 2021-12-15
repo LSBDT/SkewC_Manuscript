@@ -1,0 +1,135 @@
+#!/bin/sh
+#count gene expression
+#genome contamination
+#multi thread
+# -Q 10 option (at least maping Q 10)
+# pair-end -> -p option
+#tpm, fpkm / mapped read or assigned read
+# v9 -R option for counting assined reads -> no need
+# v10 for seq length different dataset
+# new: file compression
+########################################
+#dir=~/fs/singlecell/g_cont/
+dir=~/fs/singlecell/g_cont/test
+sp=hg38
+sp=mm10
+mousegtf=/home/shuhei-n/genome/mm10/gencode.vM9.annotation.gtf
+humangtf=/home/shuhei-n/genome/hg38/gencode.v24.annotation.gtf
+generegion=/home/shuhei-n/fs/g_cont/${sp}_geneid_region
+########################################
+cd $dir
+outdir=$dir/$sp
+if [ $(echo $sp | grep -e 'mm10') ] ; then
+#  files=`ls /analysisdata/singlecell-db/mapping/mm10/*_end/*/*out.bam`
+  files=`ls /analysisdata/singlecell-db/mapping/mm10/mm10_paired_end/mm10_E-MTAB-3346/*.bam`
+  gtf=$mousegtf
+fi
+
+if [ $(echo $sp | grep -e 'hg38') ] ; then
+  files=`ls /analysisdata/singlecell-db/mapping/hg38/*-end/*/*out.bam`
+  gtf=$humangtf
+fi
+
+ckerror=0
+
+fn(){
+  sname=`echo ${outname%%.*}`
+  samples=${outdir}/${outname}.*
+#  if [ ! -e ${outdir}/${sname} ]; then
+   if [ ! $( mkdir ${outdir}/${sname} 2>&1 | sed 's/ //g' ) ];then
+    #mkdir ${outdir}/${sname}
+
+    echo `date` " " $f
+    if [ $(echo $f | grep -e 'paired') ] ; then
+      /home/shuhei-n/bin/featureCounts -p -Q 10 -a ${gtf} -o ${outdir}/${outname} ${f} 2> ${outdir}/${outname}.log
+      div=2
+    else
+      /home/shuhei-n/bin/featureCounts -Q 10 -a ${gtf} -o ${outdir}/${outname} ${f} 2> ${outdir}/${outname}.log
+      div=1
+    fi
+
+    if [ -e ${outdir}/${outname} ]; then
+      assignedreads=`cat  ${outdir}/${outname}.summary | grep ^Assigned | cut -f2`
+      mappedreads=`~/bin/samtools view -h -F 0x100 -q 10 $f | grep -v ^@ | wc -l`
+      mappedreads=`expr $mappedreads / $div`
+      echo -e "mappedreads_q10\t"$mappedreads >> ${outdir}/${outname}.summary
+
+      if  [  $mappedreads -eq 0 -o $assignedreads -eq 0 ]; then
+        echo "count error, mappedreads : " $f 1>&2
+        cat ${outdir}/${outname} | grep -v "^#" | sed -n '2,$p' | awk 'BEGIN{OFS="\t"}{ \
+          print $1,$2,$3,$4,$5,$6,$7,"0","0","0","0"}' > ${outdir}/${outname}.expression
+      else
+        #culc. tpm fpkm
+##      echo -e "gencode\tchr\tstart_gtf\tend\tstrand\tlength\tcount\ttpm\tfpkm\ttpm_assigned\tfpkm_assigned" > ${outdir}/${outname}.header
+        cat ${outdir}/${outname} | grep -v "^#" | sed -n '2,$p' | awk 'BEGIN{OFS="\t"}{ \
+          tpm_a=$7*1000000/'$assignedreads';tpm=$7*1000000/'$mappedreads'; \
+          fpkm_a=tpm_a*1000/$6; fpkm=tpm*1000/$6; \
+          print $1,$2,$3,$4,$5,$6,$7,tpm,fpkm,tpm_a,fpkm_a}' > ${outdir}/${outname}.expression
+      fi
+
+      #sort by geneid
+      cat ${outdir}/${outname}.expression| sort -k1,1 | join -t$'\t' /dev/stdin $generegion |awk 'BEGIN{OFS="\t"}{print $12,$13-1,$14,$1,$7,$8,$9,$10,$11,$15}' | sort -k1,1 -k2,2n > ${outdir}/${outname}.bed.tmp
+      cat ${outdir}/${outname}.bed.tmp | awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$4,$5,$10}' > ${outdir}/${outname}.count.bed
+      cat ${outdir}/${outname}.bed.tmp | awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$4,$6,$10}' > ${outdir}/${outname}.tpm.bed
+      cat ${outdir}/${outname}.bed.tmp | awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$4,$7,$10}' > ${outdir}/${outname}.fpkm.bed
+      cat ${outdir}/${outname}.bed.tmp | awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$4,$8,$10}' > ${outdir}/${outname}.tpm_assigned.bed
+      cat ${outdir}/${outname}.bed.tmp | awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$4,$9,$10}' > ${outdir}/${outname}.fpkm_assigned.bed
+
+      gzip -f ${outdir}/${outname}.*.bed ${outdir}/${outname}.expression
+      rm ${outdir}/${outname} ${outdir}/${outname}.bed.tmp
+
+    else
+      echo "feature count error : " $f 1>&2
+      if [ $ckerror -eq 0 ]; then
+        ckerror=1
+        tmpf=`echo $f | sed 's|/|_|g'`
+        echo $tmpf
+        /home/shuhei-n/bin/samtools sort -n ${f} ${tmpf}.sort
+        f=${tmpf}.sort.bam
+        fn
+      else
+        ckerror=0
+      fi
+    fi
+    mv $samples ${outdir}/${sname}
+  fi
+
+}
+
+
+for f in $files
+do
+  if [ ! -s $f ]; then
+    echo "bam error, emtpy : " $f
+  else
+    ff=${f##*/}
+    outname=`echo $ff | sed 's/\.bam//'`
+    dirname=`echo $(dirname $f)|sed 's|.*/||'`
+    dirname=`echo $dirname | sed ''s/mm_GSE54695\.star_mapping_pairend\.mm10\.20160203100547/mm10_GSE54695/`
+    outdir=$dir/${sp}/$dirname
+
+    mkdir -p $outdir
+    fn
+
+#  chmod a+w $outdir
+#    chmod a+w $outdir/*
+  fi
+done
+
+
+
+
+
+############### check error files
+hoge(){
+ll /home/shuhei-n/fs/singlecell/g_cont/test/mm10/mm10_*/*/*expression.gz > z1.log
+ll /home/shuhei-n/fs/singlecell/g_cont/test/hg38/hg38_*/*/*expression.gz > z2.log
+cat z1.log |sed 's/ \+/\t/g'|cut -f5,9|awk '{if($1<100000)print}'
+cat z2.log |sed 's/ \+/\t/g'|cut -f5,9|awk '{if($1<100000)print}'
+
+for f in `cat z?.log |sed 's/ \+/\t/g'|cut -f5,9|awk '{if($1<100000)print}' | cut -f2`
+do
+  rm -r `dirname $f`
+done
+}
+
