@@ -1,0 +1,25 @@
+library(Matrix)
+
+matrix_dir = "./filtered_feature_bc_matrix/"
+barcode.path <- paste0(matrix_dir, "barcodes.tsv")
+features.path <- paste0(matrix_dir, "features.tsv")
+matrix.path <- paste0(matrix_dir, "matrix.mtx")
+mat <- readMM(file = matrix.path)
+feature.names = read.delim(features.path,
+                           header = FALSE,
+                           stringsAsFactors = FALSE)
+barcode.names = read.delim(barcode.path,
+                           header = FALSE,
+                           stringsAsFactors = FALSE)
+barcode.names <- data.frame(lapply(barcode.names,function(x)
+  {
+  gsub("-","_",x)
+}))
+
+colnames(mat) = barcode.names$V1
+rownames(mat) = feature.names$V2
+#colnames(mat)[8679] <- 'Gene'
+rownames(mat) = feature.names$V2
+hg38_10x_PBMC <- as.data.frame(as.matrix(mat))
+saveRDS(hg38_10x_PBMC,file = "/analysisdata/singlecell-db/expression/hg38/hg38_MS_Fig2_correlation_analysis/hg38_MS_Fig2_correlation_analysis_human_MCF10A/
+        hg38_10x_PBMC.rds")
