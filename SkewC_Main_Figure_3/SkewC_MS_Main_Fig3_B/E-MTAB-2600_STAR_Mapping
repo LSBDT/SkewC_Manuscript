@@ -1,0 +1,7 @@
+#!/bin/bash
+BASEDIR=/analysisdata/singlecell-db/fastq/E-MTAB-2600/E-MTAB-2600_PE/
+(cd $BASEDIR ; ls ) |   sed 's/_.\.fastq//g' |   uniq | parallel -j1 'STAR  --genomeDir /analysisdata/singlecell-db/mm10_star/mm10_genome/  
+--genomeLoad  LoadAndKeep --runThreadN 10  
+--readFilesIn /analysisdata/singlecell-db/fastq/E-MTAB-2600/E-MTAB-2600_PE/{}_1.fastq /analysisdata/singlecell-db/fastq/E-MTAB-2600/E-MTAB-2600_PE/{}_2.fastq  
+--outFileNamePrefix /analysisdata/singlecell-db/mapping/mm10/mm10_paired_end/mm10_E-MTAB-2600_PE/{}. --outSAMtype BAM SortedByCoordinate 
+--limitBAMsortRAM 80000000000 --outSAMattributes All
