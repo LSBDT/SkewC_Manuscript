@@ -1,1 +1,5 @@
+##20211217
+## Script to generate the input for SkewC
 /work/cellranger-6.0.0/cellranger count --id=run_count_CR6_0_0_t_4k --transcriptome=/analysisdata/genomes/cellranger/refdata-cellranger-GRCh38-3.0.0 --fastqs=/analysisdata/singlecell-db/CR_MDEV/SC_Gene_Expression_Chromium/hg38/t_4k/fastqs --sample=t_4k --expect-cells=7000
+## The refence genome used for CellRanger count command (transcriptome) can be downloaded from here 
+http://single-cell.riken.jp/SkewC_Figs_DataFiles/MainFigure_3/t_4k/refdata-cellranger-GRCh38-3.0.0/ 
