@@ -1,0 +1,5 @@
+## 20211217
+## Command to download the fastq files for the dataset t_4k from 10x Genomics
+wget https://s3-us-west-2.amazonaws.com/10x.files/samples/cell-exp/2.1.0/t_4k/t_4k_fastqs.tar
+## The fastq files are deposited and can be downloaded from 
+http://single-cell.riken.jp/SkewC_Figs_DataFiles/MainFigure_3/t_4k/fastqs/ 
